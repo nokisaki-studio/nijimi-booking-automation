@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>体験予約の自動受付 | 水彩教室にじみ（架空）の見本 | Nokisaki Studio</title>
+<meta name="description" content="架空の水彩教室「にじみ」の体験予約を、Google スプレッドシートと Apps Script で自動で回す見本。申込を送ると、表への記録・受付メール・教室への知らせ・催促・前日のお知らせ・週のまとめがブラウザの中で動きます。">
+<meta name="theme-color" content="#22304a">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@700&amp;family=Noto+Sans+JP:wght@400;500;700&amp;display=swap">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- にじみの LP と同じ、水彩のにじみ -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <filter id="wash" x="-20%" y="-20%" width="140%" height="140%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.018" numOctaves="3" seed="7" result="noise"/>
+    <feDisplacementMap in="SourceGraphic" in2="noise" scale="34" xChannelSelector="R" yChannelSelector="G" result="moved"/>
+    <feGaussianBlur in="moved" stdDeviation="1.6"/>
+  </filter>
+</svg>
+
+<p class="sample-note">架空の教室で作った見本です。メールは送られず、入れた内容はこのブラウザの中だけで使います（再読み込みで最初に戻ります）。</p>
+
+<header class="head">
+  <svg class="head__wash" viewBox="0 0 400 160" aria-hidden="true" focusable="false">
+    <g filter="url(#wash)">
+      <ellipse cx="110" cy="80" rx="100" ry="56" fill="#7fb2d9" opacity=".45"/>
+      <ellipse cx="220" cy="72" rx="90" ry="50" fill="#6cc3b5" opacity=".4"/>
+      <ellipse cx="310" cy="96" rx="70" ry="42" fill="#f2d16b" opacity=".45"/>
+    </g>
+  </svg>
+  <div class="head__text">
+    <h1>体験予約の自動受付</h1>
+    <p class="head__lead"><a href="https://nokisaki-studio.github.io/nijimi-lp-sample/">水彩教室 にじみ の LP</a> で受けた体験の申込を、自動で回す見本です。申込を送ると、表への記録・受付メール・教室への知らせが動きます。講師がするのは「確定」のチェックだけです。</p>
+  </div>
+</header>
+
+<main class="desk">
+
+  <section class="clock" aria-label="時計">
+    <p class="clock__now"><span class="clock__label">見本の中の日時</span><time class="clock__time" data-now></time></p>
+    <div class="clock__actions">
+      <button type="button" class="btn btn--line" data-advance="morning">翌朝 9:00 へ<span class="btn__sub">毎朝の見回り</span></button>
+      <button type="button" class="btn btn--line" data-advance="monday">次の月曜 8:00 へ<span class="btn__sub">毎日の見回りと週のまとめ</span></button>
+      <button type="button" class="btn btn--quiet" data-reset>最初に戻す</button>
+    </div>
+  </section>
+
+  <section class="pane pane--form" aria-labelledby="h-form">
+    <h2 id="h-form">申込フォーム<span class="pane__note">LP と同じ</span></h2>
+    <form class="form" novalidate data-form>
+      <div class="field">
+        <label for="f-name">お名前<span class="req">必須</span></label>
+        <input id="f-name" name="name" type="text" autocomplete="off" required aria-describedby="f-name-err">
+        <p class="err" id="f-name-err" hidden></p>
+      </div>
+      <div class="field">
+        <label for="f-mail">メールアドレス<span class="req">必須</span></label>
+        <input id="f-mail" name="email" type="email" inputmode="email" autocomplete="off" spellcheck="false" required aria-describedby="f-mail-err">
+        <p class="err" id="f-mail-err" hidden></p>
+      </div>
+      <fieldset class="field" aria-describedby="f-time-err">
+        <legend>希望の時間帯<span class="req">必須</span></legend>
+        <label class="choice"><input type="radio" name="time" value="平日の昼">平日の昼（火・木 10:30〜）</label>
+        <label class="choice"><input type="radio" name="time" value="平日の夜">平日の夜（水 19:00〜）</label>
+        <label class="choice"><input type="radio" name="time" value="土曜の朝">土曜の朝（土 10:00〜）</label>
+        <p class="err" id="f-time-err" hidden></p>
+      </fieldset>
+      <div class="field">
+        <label for="f-msg">メッセージ<span class="opt">任意</span></label>
+        <textarea id="f-msg" name="message" rows="1"></textarea>
+      </div>
+      <!-- ボット避け: 人には見えない欄。値が入っていたら記録だけして返信しない -->
+      <div class="trap" aria-hidden="true">
+        <label for="f-web">ウェブサイト</label>
+        <input id="f-web" name="website" type="text" tabindex="-1" autocomplete="off">
+      </div>
+      <button class="btn btn--main" type="submit">申込を送る</button>
+      <button class="btn btn--quiet btn--small" type="button" data-another>ほかの方の名前で入れ直す</button>
+      <p class="form__hint">同じメールアドレスでもう一度送ると、「重複」として 1 件にまとめます。</p>
+    </form>
+  </section>
+
+  <section class="pane pane--sheet" aria-labelledby="h-sheet">
+    <h2 id="h-sheet">申込の表<span class="pane__note">Google スプレッドシート</span></h2>
+    <div class="sheet" data-sheet>
+      <div class="sheet__scroll" tabindex="0" role="region" aria-label="表の中身" data-sheet-body></div>
+      <div class="sheet__tabs" role="tablist" aria-label="シート" data-sheet-tabs></div>
+    </div>
+    <p class="sheet__key"><span class="swatch swatch--human" aria-hidden="true"></span>黄色の列だけ講師が操作します。ほかの列は自動で書き込まれます。</p>
+  </section>
+
+  <section class="pane pane--feed" aria-labelledby="h-feed">
+    <h2 id="h-feed">起きたこと<span class="pane__note">メールは送られません</span></h2>
+    <ol class="feed" data-feed aria-live="polite" aria-relevant="additions"></ol>
+    <details class="feed__older" data-feed-older hidden>
+      <summary>それより前の記録（<span data-feed-older-count>0</span> 件）</summary>
+      <ol class="feed" data-feed-older-list></ol>
+    </details>
+    <p class="feed__empty" data-feed-empty>申込を送ると、ここに自動でしたことと、送ったメールの文面が並びます。</p>
+  </section>
+
+</main>
+
+<section class="how" aria-labelledby="h-how">
+  <h2 id="h-how">いつ、何が動くか</h2>
+  <ol class="how__list">
+    <li><h3>申込が届いたとき</h3><p>表に 1 行足し、申込者へ受付メール、教室へ知らせを送ります。希望の時間帯で、申込から 24 時間以上あとの、空きがあり休講日でない、いちばん近い回を候補にします（1 回の定員 5 人。在籍の生徒さんも数えます）。同じメールアドレスの申込が残っていれば「重複」にまとめます。</p></li>
+    <li class="how__human"><h3>講師が「確定」にチェックを入れたとき</h3><p>申込者へ、日時・場所・持ち物の案内メールを送ります。人が決めるのはここだけです。</p></li>
+    <li><h3>毎朝 9 時台</h3><p>受付から 1 日たっても確定していない申込を、講師に知らせます（LP の「2日以内にご案内」を守るため）。明日が体験の方には、前日のお知らせを送ります。</p></li>
+    <li><h3>毎週月曜 8 時台</h3><p>先週の申込の数・時間帯ごとの数・見学のご希望・確定までの平均時間を、「週報」のシートに書き、講師へ送ります。</p></li>
+  </ol>
+  <div class="how__facts">
+    <p><strong>使うもの</strong>Google スプレッドシートと Apps Script。どちらも Google アカウントがあれば無料です。無料の Gmail のアカウントから送れるメールは、1 日 100 人までです。</p>
+    <p><strong>本物のコード</strong>このページの動きと、Apps Script 版は、同じ処理のファイル（core.js）を使っています。<a href="https://github.com/nokisaki-studio/nijimi-booking-automation">コードを見る（GitHub）</a></p>
+    <p><strong>確かめたこと</strong>Google のサービスを偽物に置き換えた 33 件のテストで、Apps Script 版の流れを確かめています。Google のアカウント上での実行は、まだ確かめていません。</p>
+  </div>
+</section>
+
+<footer class="foot">
+  <p class="foot__brand">
+    <svg class="roof" viewBox="0 0 120 60" aria-hidden="true" focusable="false"><path d="M6 46 Q34 40 60 10 Q86 40 114 46" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round"/><path d="M30 46 L30 58 M90 46 L90 58" stroke="currentColor" stroke-width="7" stroke-linecap="round"/></svg>
+    制作 Nokisaki Studio
+  </p>
+  <p>教室・講師・申込はすべて架空です。下書きとコードに AI ツールを使い、仕上げの確認はすべて自分で行っています。<a href="https://nokisaki-studio.github.io/">ほかの見本</a></p>
+</footer>
+
+<script src="core.js"></script>
+<script src="demo.js"></script>
+</body>
+</html>
