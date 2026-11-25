@@ -11,6 +11,7 @@
 // ---------- 設定(ここだけ書き換える) ----------
 
 var SETTINGS = {
+  spreadsheetId: '', // 表に紐づけずに作ったプロジェクト(単独のプロジェクト)のときだけ、表の ID(URL の /d/ と /edit のあいだ)を書く
   staffEmail: '', // 講師に知らせるアドレス。空なら、このスクリプトを動かすアカウントのアドレス
   senderName: '水彩教室 にじみ', // メールの差出人の名前
   dailyHour: 9, // 毎朝の見回り(この時刻から 1 時間のうちのどこかで動く)
@@ -21,6 +22,14 @@ var SETTINGS = {
 var SHEETS = { apps: '申込', enrolled: '在籍人数', holidays: '休講日', weekly: '週報' };
 var HANDLERS = ['onSheetEdit', 'dailyRun', 'weeklyRun'];
 var TEXT_COLUMNS = ['candidate', 'staffReminded']; // 表計算に日付へ変えられたくない列
+
+// 使う表。表から開いたプロジェクトならその表、単独のプロジェクトなら SETTINGS.spreadsheetId の表
+function ss_() {
+  if (SETTINGS.spreadsheetId) return SpreadsheetApp.openById(SETTINGS.spreadsheetId);
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss) throw new Error('使う表がありません。単独のプロジェクトなら、SETTINGS.spreadsheetId に表の ID を書いてください');
+  return ss;
+}
 
 function cfg_() {
   return NijimiCore.config(SETTINGS.classroom);
@@ -33,7 +42,7 @@ function staffEmail_() {
 // ---------- 最初に 1 回だけ実行する ----------
 
 function setup() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ss = ss_();
   ss.setSpreadsheetTimeZone('Asia/Tokyo');
 
   var apps = sheet_(ss, SHEETS.apps, NijimiCore.COLUMNS.map(function (c) { return c[1]; }));
@@ -76,7 +85,7 @@ function doPost(e) {
   var lock = LockService.getScriptLock();
   try {
     lock.waitLock(30000);
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var ss = ss_();
     var state = readState_(ss);
     var now = new Date();
     var plan = NijimiCore.receive(state, (e && e.parameter) || {}, now, cfg_());
@@ -144,7 +153,7 @@ function dailyRun() {
   var lock = LockService.getScriptLock();
   try {
     lock.waitLock(30000);
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var ss = ss_();
     var now = new Date();
     var plan = NijimiCore.daily(readState_(ss), now, cfg_());
     applyUpdates_(ss, plan.updates);
@@ -159,7 +168,7 @@ function weeklyRun() {
   var lock = LockService.getScriptLock();
   try {
     lock.waitLock(30000);
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var ss = ss_();
     var now = new Date();
     var plan = NijimiCore.weekly(readState_(ss), now, cfg_());
     var sh = ss.getSheetByName(SHEETS.weekly);

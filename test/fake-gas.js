@@ -158,7 +158,15 @@ function makeGas(clock, opts = {}) {
   }
 
   const globals = {
-    SpreadsheetApp: { getActiveSpreadsheet: () => ss, flush() {} },
+    SpreadsheetApp: {
+      // 単独のプロジェクトでは、紐づいた表がない(opts.standalone)
+      getActiveSpreadsheet: () => (opts.standalone ? null : ss),
+      openById(id) {
+        if (id !== opts.spreadsheetId) throw new Error('表が見つかりません: ' + id);
+        return ss;
+      },
+      flush() {},
+    },
     ScriptApp: {
       WeekDay: { MONDAY: 'MONDAY' },
       newTrigger: triggerBuilder,

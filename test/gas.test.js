@@ -221,6 +221,19 @@ test('メールが送れない: 「未送信」と書き、講師に知らせる
   assert.equal(cellOf(t.apps(), 3, 'mailReceived'), '未送信：今日の送信の上限に達しました');
 });
 
+test('単独のプロジェクト: SETTINGS.spreadsheetId の表を使う。書いていなければ理由つきで止まる', () => {
+  const clock = makeClock(C.jst(2026, 11, 24, 9, 0));
+  const gas = makeGas(clock, { standalone: true, spreadsheetId: 'SHEET-ID' });
+  const p = loadProject(gas.globals);
+  assert.throws(() => p.setup(), /SETTINGS\.spreadsheetId に表の ID/);
+  p.SETTINGS.spreadsheetId = 'SHEET-ID';
+  p.setup();
+  const res = JSON.parse(p.doPost({ parameter: form() }).getContent());
+  assert.deepEqual(res, { ok: true, id: 'N261124-001' });
+  assert.equal(gas.ss.getSheetByName('申込').getLastRow(), 2);
+  assert.equal(gas.triggers.find((t) => t.handler === 'onSheetEdit').source, gas.ss);
+});
+
 test('doGet: 公開した URL で動いているかを返す', () => {
   const t = project(C.jst(2026, 11, 24, 9, 0));
   assert.deepEqual(JSON.parse(t.p.doGet().getContent()), { ok: true, service: '水彩教室 にじみ 体験予約の受付' });

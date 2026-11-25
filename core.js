@@ -571,6 +571,7 @@ var NijimiCore = (function () {
       var key = COLUMNS[i][0];
       var v = app[key];
       if (key === 'name' || key === 'message' || key === 'email') v = sheetSafe(v);
+      if (key === 'visit') v = v === true ? '見学' : '';
       row.push(v === undefined || v === null ? '' : v);
     }
     return row;
@@ -579,7 +580,7 @@ var NijimiCore = (function () {
   function fromRow(row) {
     var app = {};
     for (var i = 0; i < COLUMNS.length; i++) app[COLUMNS[i][0]] = row[i];
-    app.visit = app.visit === true || app.visit === 'TRUE';
+    app.visit = app.visit === true || app.visit === 'TRUE' || app.visit === '見学';
     app.confirmed = app.confirmed === true || app.confirmed === 'TRUE';
     app.email = String(app.email || '').toLowerCase();
     app.candidate = app.candidate instanceof Date ? sessionKey(app.candidate) : String(app.candidate || '');

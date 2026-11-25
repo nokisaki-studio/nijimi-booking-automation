@@ -234,6 +234,8 @@ test('表の行との変換: 行に戻しても同じ中身になる', () => {
   const now = C.jst(2026, 11, 24, 9, 0);
   const st = state();
   const app = apply(st, form({ message: '見学希望' }), now).add;
+  assert.equal(C.toRow(app)[C.columnIndex('visit')], '見学');
+  assert.equal(C.toRow({ ...app, visit: false })[C.columnIndex('visit')], '');
   const back = C.fromRow(C.toRow(app));
   assert.equal(back.id, app.id);
   assert.equal(back.visit, true);
